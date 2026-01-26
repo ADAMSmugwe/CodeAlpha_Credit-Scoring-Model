@@ -14,15 +14,16 @@ I built this project to automate that decision using historical data about past 
 
 I started by realizing something crucial: **garbage in, garbage out**. If the data is messy, the model will be confused. So I spent time:
 
-- Identifying missing values (some people didn't fill out all fields)
-- Handling them carefully (using median for numbers, most common value for categories)
-- Encoding categorical features (converting text like "owns" vs "rents" into numbers the model could understand)
+-   Identifying missing values (some people didn't fill out all fields)
+-   Handling them carefully (using median for numbers, most common value for categories)
+-   Encoding categorical features (converting text like "owns" vs "rents" into numbers the model could understand)
 
 ### The Data Leakage Problem (This Was Tricky)
 
 This was the moment I really understood why proper data handling matters. **Data leakage** happens when you accidentally use information from your test set during training. For example, if I scaled the entire dataset before splitting it into train/test, the test data would influence the scaling parameters. That's cheating—it makes the model look better than it actually is.
 
 So here's what I did right:
+
 1. Split the data into train and test sets FIRST
 2. Then fitted the scaler only on training data
 3. Applied that scaler to test data
@@ -67,15 +68,16 @@ y_pred_proba = model.predict_proba(X_test)[:, 1]
 
 **Result:** ROC-AUC of **0.8119** (about 81.19%)
 
-Interesting—it was actually slightly *lower* than Logistic Regression out of the box. This taught me an important lesson: **more complex doesn't always mean better**. But then I tried hyperparameter optimization...
+Interesting—it was actually slightly _lower_ than Logistic Regression out of the box. This taught me an important lesson: **more complex doesn't always mean better**. But then I tried hyperparameter optimization...
 
 ### Hyperparameter Optimization: Fine-Tuning the Model
 
 I used RandomizedSearchCV to test 50 different combinations of parameters:
-- `n_estimators`: How many trees?
-- `max_depth`: How deep can each tree grow?
-- `min_samples_split`: When should a tree stop splitting?
-- `max_features`: Which features should each tree consider?
+
+-   `n_estimators`: How many trees?
+-   `max_depth`: How deep can each tree grow?
+-   `min_samples_split`: When should a tree stop splitting?
+-   `max_features`: Which features should each tree consider?
 
 After testing 250 different configurations (50 combinations × 5-fold cross-validation), I found the best parameters.
 
@@ -104,10 +106,11 @@ best_model = random_search.best_estimator_
 ```
 
 **Best Parameters Found:**
-- `n_estimators`: 250 (more trees = more perspectives)
-- `max_depth`: 5 (shallow trees prevent overfitting)
-- `min_samples_split`: 5 (require minimum samples before splitting)
-- `max_features`: sqrt (randomly consider square root of features)
+
+-   `n_estimators`: 250 (more trees = more perspectives)
+-   `max_depth`: 5 (shallow trees prevent overfitting)
+-   `min_samples_split`: 5 (require minimum samples before splitting)
+-   `max_features`: sqrt (randomly consider square root of features)
 
 **Result:** ROC-AUC of **0.8227** (about 82.27%)
 
@@ -120,9 +123,10 @@ Still not beating Logistic Regression, but getting closer. I realized that Rando
 Think of it like this: if you show the model 100 random pairs (one creditworthy person, one non-creditworthy person), how often does it correctly identify which is which? That percentage is what ROC-AUC measures. It ranges from 0 (always wrong) to 1.0 (always right).
 
 **My Results:**
-- Logistic Regression: **0.8473** ✓ (Best)
-- Optimized Random Forest: **0.8227** (Close second)
-- Basic Random Forest: **0.8119** (Baseline Random Forest)
+
+-   Logistic Regression: **0.8473** ✓ (Best)
+-   Optimized Random Forest: **0.8227** (Close second)
+-   Basic Random Forest: **0.8119** (Baseline Random Forest)
 
 An ROC-AUC of 0.85 means the model is doing pretty well—better than random guessing (0.5) and in the "good" range for finance applications.
 
@@ -138,10 +142,11 @@ Actual    0   89   25  (True Negatives, False Positives)
 ```
 
 This means:
-- **89 cases**: Correctly identified people who wouldn't default ✓
-- **60 cases**: Correctly identified people who would default ✓
-- **25 cases**: False alarms—approved people who ended up defaulting (BAD)
-- **26 cases**: Missed opportunities—rejected people who would have been fine (LOST MONEY)
+
+-   **89 cases**: Correctly identified people who wouldn't default ✓
+-   **60 cases**: Correctly identified people who would default ✓
+-   **25 cases**: False alarms—approved people who ended up defaulting (BAD)
+-   **26 cases**: Missed opportunities—rejected people who would have been fine (LOST MONEY)
 
 ## Risk Trade-offs: The Threshold Analysis
 
@@ -150,29 +155,32 @@ Here's where it got really interesting. I discovered that the model outputs a **
 ### What I Discovered
 
 If I set the threshold at **0.30** (very lenient):
-- Approve 75% of applicants
-- Bad loan risk: 57% (almost half the people we approve will default!)
-- But we don't miss good customers
+
+-   Approve 75% of applicants
+-   Bad loan risk: 57% (almost half the people we approve will default!)
+-   But we don't miss good customers
 
 If I set it at **0.50** (balanced):
-- Approve 42.5% of applicants
-- Bad loan risk: 22% (much safer)
-- Miss 30% of people who would have been fine
+
+-   Approve 42.5% of applicants
+-   Bad loan risk: 22% (much safer)
+-   Miss 30% of people who would have been fine
 
 If I set it at **0.70** (very conservative):
-- Approve only 6% of applicants
-- Bad loan risk: Less than 1% (super safe)
-- But we reject 87% of people who would have been good customers
+
+-   Approve only 6% of applicants
+-   Bad loan risk: Less than 1% (super safe)
+-   But we reject 87% of people who would have been good customers
 
 ### The Real-World Impact
 
 This was the moment I realized **there is no perfect answer**. A bank must choose:
 
-| Threshold | Approval Rate | Default Risk | Missed Opportunity | Best For |
-|-----------|---------------|--------------|-------------------|----------|
-| 0.30      | 75%          | 57%          | 1%                | Growth-focused |
-| 0.50      | 42.5%        | 22%          | 30%               | Balanced |
-| 0.70      | 6%           | <1%          | 87%               | Risk-averse |
+| Threshold | Approval Rate | Default Risk | Missed Opportunity | Best For       |
+| --------- | ------------- | ------------ | ------------------ | -------------- |
+| 0.30      | 75%           | 57%          | 1%                 | Growth-focused |
+| 0.50      | 42.5%         | 22%          | 30%                | Balanced       |
+| 0.70      | 6%            | <1%          | 87%                | Risk-averse    |
 
 A startup bank might choose 0.30 to grow fast. A conservative bank might choose 0.70 to protect capital. The model doesn't decide—it just shows the trade-offs.
 
@@ -181,12 +189,15 @@ A startup bank might choose 0.30 to grow fast. A conservative bank might choose 
 I organized my work into modular scripts:
 
 ### 1. `data_preprocessing.py`
+
 Handles data cleaning, imputation, encoding, and splitting.
 
 ### 2. `train_logistic_regression.py`
+
 Trains and evaluates the baseline Logistic Regression model.
 
 ### 3. `train_tree_models.py`
+
 Trains Decision Tree and Random Forest classifiers, extracts feature importances, and compares performance.
 
 ```python
@@ -208,6 +219,7 @@ print(f"Random Forest ROC-AUC: {roc_auc_score(y_test, rf_model.predict_proba(X_t
 ```
 
 ### 4. `optimize_random_forest.py`
+
 Performs hyperparameter tuning and threshold analysis.
 
 ```python
@@ -249,11 +261,12 @@ python optimize_random_forest.py       # Hyperparameter tuning & threshold analy
 ### Expected Output
 
 Each script will display:
-- Model training progress
-- Performance metrics (Accuracy, Precision, Recall, F1-Score, ROC-AUC)
-- Confusion matrices
-- Feature importances (for tree models)
-- Threshold analysis and bank risk assessment
+
+-   Model training progress
+-   Performance metrics (Accuracy, Precision, Recall, F1-Score, ROC-AUC)
+-   Confusion matrices
+-   Feature importances (for tree models)
+-   Threshold analysis and bank risk assessment
 
 ## What I Learned
 
@@ -268,11 +281,12 @@ This project taught me way more than just "how to train a model." Here are the b
 ## Future Ideas
 
 If I were to expand this project:
-- Add more features (credit card utilization patterns, loan history trends)
-- Try gradient boosting models (XGBoost, LightGBM)
-- Implement SHAP values to explain individual predictions
-- A/B test different thresholds in production
-- Track model performance over time (does it drift?)
+
+-   Add more features (credit card utilization patterns, loan history trends)
+-   Try gradient boosting models (XGBoost, LightGBM)
+-   Implement SHAP values to explain individual predictions
+-   A/B test different thresholds in production
+-   Track model performance over time (does it drift?)
 
 ## Repository
 
